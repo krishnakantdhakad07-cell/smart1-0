@@ -27,23 +27,26 @@ def get_news():
         return "\n".join([f"- {a['title']}" for a in res['articles'][:3]])
     except: return "News unavailable"
 
-# --- MAIN BRAIN ---
+# --- MAIN BRAIN (Audio + Text + Image + All APIs) ---
 def smart1_0_ultimate(audio_file, text_input, image_input):
     user_text = ""
     ai_photo = None
     
+    # Text input check
     if text_input and text_input.strip() != "":
         user_text = text_input
+    # Audio input check (Mic)
     elif audio_file is not None:
         recognizer = sr.Recognizer()
-        with sr.AudioFile(audio_file) as source:
-            audio_data = recognizer.record(source)
-            try:
+        try:
+            with sr.AudioFile(audio_file) as source:
+                audio_data = recognizer.record(source)
                 user_text = recognizer.recognize_google(audio_data, language="hi-IN")
-            except: return "Sound unclear", "Maaf karna, sun nahi paya.", None, None
+        except:
+            return "Aawaaz clear nahi thi.", "Maaf karna, main sun nahi paya.", None, None
 
     if not user_text and image_input: user_text = "Is photo ko describe karo."
-    if not user_text: return "No Input", "Kuch toh bolo ya likho!", None, None
+    if not user_text: return "No Input", "Kripya bolo ya type karo!", None, None
 
     user_lower = user_text.lower()
     context = ""
@@ -75,12 +78,17 @@ def smart1_0_ultimate(audio_file, text_input, image_input):
     except Exception as e:
         ai_text = "Mujhe samajh nahi aaya, kripya dobara bataiye."
 
-    tts = gTTS(ai_text, lang='hi')
-    tts.save("voice.mp3")
+    # Generate Voice (gTTS)
+    audio_path = "reply.mp3"
+    try:
+        tts = gTTS(ai_text, lang='hi')
+        tts.save(audio_path)
+    except:
+        audio_path = None
     
-    return user_text, ai_text, "voice.mp3", ai_photo
+    return user_text, ai_text, audio_path, ai_photo
 
-# --- UI DESIGN (Clean & Safe) ---
+# --- UI DESIGN ---
 custom_theme = gr.themes.Soft(
     primary_hue="cyan",
     secondary_hue="blue",
@@ -89,7 +97,7 @@ custom_theme = gr.themes.Soft(
 
 with gr.Blocks(title="Smart1/0 Ultimate", theme=custom_theme) as demo:
     gr.Markdown("<h1 style='text-align: center; color: #00d2ff;'>🤖 Project Smart1/0</h1>")
-    gr.Markdown("<p style='text-align: center;'><b>Created by Krishnkant</b></p>")
+    gr.Markdown("<p style='text-align: center;'><b>Created by Krishnkant</b> | Ultimate Voice & Vision AI 🎙️👁️</p>")
     
     with gr.Row():
         with gr.Column(scale=1):
