@@ -14,7 +14,7 @@ model = genai.GenerativeModel('gemini-flash-latest')
 # 🧠 MEMORY ENGINE
 chat_session = model.start_chat(history=[])
 
-# --- SARE HELPER FUNCTIONS ---
+# --- HELPER FUNCTIONS ---
 def get_weather(city="Gwalior"):
     try:
         res = requests.get(f"https://wttr.in/{city}?format=%l:+%C+%t&m")
@@ -27,7 +27,7 @@ def get_news():
         return "\n".join([f"- {a['title']}" for a in res['articles'][:3]])
     except: return "News unavailable"
 
-# --- MAIN BRAIN ---
+# --- MAIN BRAIN WITH SAFE IMAGE CHECK ---
 def smart1_0_ultimate(audio_file, text_input, image_input):
     user_text = ""
     ai_photo = None
@@ -53,14 +53,22 @@ def smart1_0_ultimate(audio_file, text_input, image_input):
     if "news" in user_lower or "khabar" in user_lower:
         context += f"\n[LIVE NEWS: {get_news()}]"
 
+    # 🎨 SAFE PHOTO GENERATION LOGIC
     image_keywords = ["banao", "draw", "photo", "image", "generate", "picture"]
     if any(word in user_lower for word in image_keywords):
         try:
             clean_prompt = urllib.parse.quote(user_text)
-            ai_photo = f"https://image.pollinations.ai/prompt/{clean_prompt}?width=1024&height=1024&nologo=true"
-            context += "\n[SYSTEM: Photo successfully generate ho gayi hai aur niche box mein dikh rahi hai.]"
+            img_url = f"https://image.pollinations.ai/prompt/{clean_prompt}?width=512&height=512&nologo=true"
+            
+            # Check if URL actually returns an image, not JSON/Error
+            test_res = requests.get(img_url)
+            if test_res.status_code == 200 and 'image' in test_res.headers.get('Content-Type', ''):
+                ai_photo = img_url
+                context += "\n[SYSTEM: Photo successfully generate ho gayi hai aur visible hai.]"
+            else:
+                context += "\n[SYSTEM: Image server busy hai, image load nahi ho paayi.]"
         except:
-            context += "\n[SYSTEM: Photo generation fail ho gayi.]"
+            context += "\n[SYSTEM: Photo generation mein network error aayi.]"
 
     prompt = f"""[SYSTEM CONTEXT: {context} 
     Rule: Be friendly. Speak in simple Hinglish. DO NOT use markdown/complex math symbols. Write plain text for text-to-speech.]
@@ -81,8 +89,7 @@ def smart1_0_ultimate(audio_file, text_input, image_input):
     
     return user_text, ai_text, "voice.mp3", ai_photo
 
-# --- 🎨 NAYA FUTURISTIC UI DESIGN ---
-# Humne ek custom theme banayi hai cyan aur slate colors ke sath
+# --- UI DESIGN ---
 custom_theme = gr.themes.Soft(
     primary_hue="cyan",
     secondary_hue="blue",
@@ -92,10 +99,9 @@ custom_theme = gr.themes.Soft(
 
 with gr.Blocks(title="Smart1/0 Ultimate", theme=custom_theme) as demo:
     gr.Markdown("<h1 style='text-align: center; color: #00d2ff;'>🤖 Project Smart1/0</h1>")
-    gr.Markdown("<p style='text-align: center;'><b>Created by Krishnkant</b> | Ultimate Super-AI with Memory & Advanced UI 🧠✨</p>")
+    gr.Markdown("<p style='text-align: center;'><b>Created by Krishnkant</b> | Bug-Free Ultimate Version 🚀</p>")
     
     with gr.Row():
-        # Left Side: Tumhara Input
         with gr.Column(scale=1, variant="panel"):
             gr.Markdown("### 📥 Command Center")
             in_audio = gr.Audio(sources=["microphone"], type="filepath", label="🎙️ Boliye")
@@ -103,7 +109,6 @@ with gr.Blocks(title="Smart1/0 Ultimate", theme=custom_theme) as demo:
             in_img = gr.Image(sources=["webcam", "upload"], type="pil", label="👁️ E.D.I.T.H. (Vision)")
             btn = gr.Button("🚀 SYSTEM START", variant="primary")
             
-        # Right Side: AI ka Output
         with gr.Column(scale=1, variant="panel"):
             gr.Markdown("### 📤 Smart1/0 Output")
             out_input = gr.Textbox(label="Aapki Command:")
@@ -111,7 +116,6 @@ with gr.Blocks(title="Smart1/0 Ultimate", theme=custom_theme) as demo:
             out_audio = gr.Audio(label="🔊 Suniye:", autoplay=True)
             out_image = gr.Image(label="🎨 Art Gallery (Generated Images)")
 
-    # Button ko function se jodna
     btn.click(smart1_0_ultimate, [in_audio, in_text, in_img], [out_input, out_text, out_audio, out_image])
 
 if __name__ == "__main__":
