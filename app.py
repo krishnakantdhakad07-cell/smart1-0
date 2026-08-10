@@ -11,6 +11,9 @@ GOOGLE_API_KEY = os.environ.get("GOOGLE_API_KEY")
 genai.configure(api_key=GOOGLE_API_KEY)
 model = genai.GenerativeModel('gemini-flash-latest')
 
+# 🧠 MEMORY ENGINE
+chat_session = model.start_chat(history=[])
+
 # --- SARE HELPER FUNCTIONS ---
 def get_weather(city="Gwalior"):
     try:
@@ -29,7 +32,6 @@ def smart1_0_ultimate(audio_file, text_input, image_input):
     user_text = ""
     ai_photo = None
     
-    # Input Handling
     if text_input and text_input.strip() != "":
         user_text = text_input
     elif audio_file is not None:
@@ -43,7 +45,6 @@ def smart1_0_ultimate(audio_file, text_input, image_input):
     if not user_text and image_input: user_text = "Is photo ko describe karo."
     if not user_text: return "No Input", "Kuch toh bolo ya likho!", None, None
 
-    # Keyword Detection
     user_lower = user_text.lower()
     context = ""
     
@@ -52,54 +53,65 @@ def smart1_0_ultimate(audio_file, text_input, image_input):
     if "news" in user_lower or "khabar" in user_lower:
         context += f"\n[LIVE NEWS: {get_news()}]"
 
-    # 🎨 PHOTO GENERATION LOGIC (Keyword: "banao", "draw", "photo", "image")
     image_keywords = ["banao", "draw", "photo", "image", "generate", "picture"]
     if any(word in user_lower for word in image_keywords):
         try:
-            # Pollinations AI use kar rahe hain (Free & No Key)
             clean_prompt = urllib.parse.quote(user_text)
             ai_photo = f"https://image.pollinations.ai/prompt/{clean_prompt}?width=1024&height=1024&nologo=true"
-            context += "\n[SYSTEM: Photo successfully generate ho gayi hai aur niche box mein dikh rahi hai. User ko khushi se batao!]"
+            context += "\n[SYSTEM: Photo successfully generate ho gayi hai aur niche box mein dikh rahi hai.]"
         except:
             context += "\n[SYSTEM: Photo generation fail ho gayi.]"
 
-    # AI Instruction
-    prompt = f"""You are Smart1/0, a super-AI created by Krishnkant.
-    Be friendly like a brother. Use simple Hinglish.
-    {context}
+    prompt = f"""[SYSTEM CONTEXT: {context} 
+    Rule: Be friendly. Speak in simple Hinglish. DO NOT use markdown/complex math symbols. Write plain text for text-to-speech.]
     
-    IMPORTANT: If a photo was generated (see context), confirm it to the user.
-    Don't say 'I am a text model'. You are an All-in-One AI!
     User Query: {user_text}"""
 
-    # Generate Text
-    response = model.generate_content([prompt, image_input]) if image_input else model.generate_content(prompt)
-    ai_text = response.text
+    try:
+        if image_input is not None:
+            response = chat_session.send_message([prompt, image_input])
+        else:
+            response = chat_session.send_message(prompt)
+        ai_text = response.text
+    except Exception as e:
+        ai_text = "Mujhe samajh nahi aaya, kripya dobara bataiye."
 
-    # Generate Voice
     tts = gTTS(ai_text, lang='hi')
     tts.save("voice.mp3")
     
     return user_text, ai_text, "voice.mp3", ai_photo
 
-# --- GRADIO UI (4 Output Boxes) ---
-with gr.Blocks(title="Smart1/0 Ultimate") as demo:
-    gr.Markdown("# 🤖 Project Smart1/0: Ultimate Super-AI")
-    gr.Markdown("Created by **Krishnkant** | Mausam, Khabrein, aur AI Art!")
+# --- 🎨 NAYA FUTURISTIC UI DESIGN ---
+# Humne ek custom theme banayi hai cyan aur slate colors ke sath
+custom_theme = gr.themes.Soft(
+    primary_hue="cyan",
+    secondary_hue="blue",
+    neutral_hue="slate",
+    font=[gr.themes.GoogleFont('Orbitron'), 'ui-sans-serif', 'system-ui', 'sans-serif']
+)
+
+with gr.Blocks(title="Smart1/0 Ultimate", theme=custom_theme) as demo:
+    gr.Markdown("<h1 style='text-align: center; color: #00d2ff;'>🤖 Project Smart1/0</h1>")
+    gr.Markdown("<p style='text-align: center;'><b>Created by Krishnkant</b> | Ultimate Super-AI with Memory & Advanced UI 🧠✨</p>")
     
     with gr.Row():
-        with gr.Column():
+        # Left Side: Tumhara Input
+        with gr.Column(scale=1, variant="panel"):
+            gr.Markdown("### 📥 Command Center")
             in_audio = gr.Audio(sources=["microphone"], type="filepath", label="🎙️ Boliye")
-            in_text = gr.Textbox(label="⌨️ Type karein")
+            in_text = gr.Textbox(label="⌨️ Type karein", placeholder="Apni command yahan likhein...")
             in_img = gr.Image(sources=["webcam", "upload"], type="pil", label="👁️ E.D.I.T.H. (Vision)")
-            btn = gr.Button("Submit 🚀")
+            btn = gr.Button("🚀 SYSTEM START", variant="primary")
             
-        with gr.Column():
-            out_input = gr.Textbox(label="Aapne pucha:")
-            out_text = gr.Textbox(label="📝 Smart1/0 ka Jawab:")
+        # Right Side: AI ka Output
+        with gr.Column(scale=1, variant="panel"):
+            gr.Markdown("### 📤 Smart1/0 Output")
+            out_input = gr.Textbox(label="Aapki Command:")
+            out_text = gr.Textbox(label="📝 Jawab:", lines=4)
             out_audio = gr.Audio(label="🔊 Suniye:", autoplay=True)
-            out_image = gr.Image(label="🎨 Smart1/0 ki Art Gallery") # YE RAHA PHOTO BOX!
+            out_image = gr.Image(label="🎨 Art Gallery (Generated Images)")
 
+    # Button ko function se jodna
     btn.click(smart1_0_ultimate, [in_audio, in_text, in_img], [out_input, out_text, out_audio, out_image])
 
 if __name__ == "__main__":
