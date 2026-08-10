@@ -27,7 +27,7 @@ def get_news():
         return "\n".join([f"- {a['title']}" for a in res['articles'][:3]])
     except: return "News unavailable"
 
-# --- MAIN BRAIN WITH SAFE IMAGE CHECK ---
+# --- MAIN BRAIN ---
 def smart1_0_ultimate(audio_file, text_input, image_input):
     user_text = ""
     ai_photo = None
@@ -53,22 +53,19 @@ def smart1_0_ultimate(audio_file, text_input, image_input):
     if "news" in user_lower or "khabar" in user_lower:
         context += f"\n[LIVE NEWS: {get_news()}]"
 
-    # 🎨 SAFE PHOTO GENERATION LOGIC
     image_keywords = ["banao", "draw", "photo", "image", "generate", "picture"]
     if any(word in user_lower for word in image_keywords):
         try:
             clean_prompt = urllib.parse.quote(user_text)
             img_url = f"https://image.pollinations.ai/prompt/{clean_prompt}?width=512&height=512&nologo=true"
-            
-            # Check if URL actually returns an image, not JSON/Error
             test_res = requests.get(img_url)
             if test_res.status_code == 200 and 'image' in test_res.headers.get('Content-Type', ''):
                 ai_photo = img_url
-                context += "\n[SYSTEM: Photo successfully generate ho gayi hai aur visible hai.]"
+                context += "\n[SYSTEM: Photo successfully generate ho gayi hai.]"
             else:
-                context += "\n[SYSTEM: Image server busy hai, image load nahi ho paayi.]"
+                context += "\n[SYSTEM: Image server busy hai.]"
         except:
-            context += "\n[SYSTEM: Photo generation mein network error aayi.]"
+            context += "\n[SYSTEM: Photo generation error.]"
 
     prompt = f"""[SYSTEM CONTEXT: {context} 
     Rule: Be friendly. Speak in simple Hinglish. DO NOT use markdown/complex math symbols. Write plain text for text-to-speech.]
@@ -89,7 +86,7 @@ def smart1_0_ultimate(audio_file, text_input, image_input):
     
     return user_text, ai_text, "voice.mp3", ai_photo
 
-# --- UI DESIGN ---
+# --- 🔒 FULL CLEAN UI DESIGN (Hiding Footers, API links & Code buttons) ---
 custom_theme = gr.themes.Soft(
     primary_hue="cyan",
     secondary_hue="blue",
@@ -97,9 +94,18 @@ custom_theme = gr.themes.Soft(
     font=[gr.themes.GoogleFont('Orbitron'), 'ui-sans-serif', 'system-ui', 'sans-serif']
 )
 
-with gr.Blocks(title="Smart1/0 Ultimate", theme=custom_theme) as demo:
+# Yeh CSS code "Use via API" link aur footer ko completely hide kar dega
+custom_css = """
+footer {visibility: hidden !important;}
+.built-with {display: none !important;}
+#share-btn-container {display: none !important;}
+a[href*="api"] {display: none !important;}
+.api-link {display: none !important;}
+"""
+
+with gr.Blocks(title="Smart1/0 Ultimate", theme=custom_theme, css=custom_css) as demo:
     gr.Markdown("<h1 style='text-align: center; color: #00d2ff;'>🤖 Project Smart1/0</h1>")
-    gr.Markdown("<p style='text-align: center;'><b>Created by Krishnkant</b> | Bug-Free Ultimate Version 🚀</p>")
+    gr.Markdown("<p style='text-align: center;'><b>Created by Krishnkant</b> | Secure & Private AI App 🛡️✨</p>")
     
     with gr.Row():
         with gr.Column(scale=1, variant="panel"):
@@ -119,4 +125,4 @@ with gr.Blocks(title="Smart1/0 Ultimate", theme=custom_theme) as demo:
     btn.click(smart1_0_ultimate, [in_audio, in_text, in_img], [out_input, out_text, out_audio, out_image])
 
 if __name__ == "__main__":
-    demo.launch(server_name="0.0.0.0", server_port=7860)
+    demo.launch(server_name="0.0.0.0", server_port=7860, analytics_enabled=False)
