@@ -14,15 +14,25 @@ GOOGLE_API_KEY = os.environ.get("GOOGLE_API_KEY")
 genai.configure(api_key=GOOGLE_API_KEY)
 model = genai.GenerativeModel('gemini-flash-latest')
 
-# 🗄️ NAYA DATABASE SYSTEM (Sabke passwords save karne ke liye)
+# 🗄️ DATABASE SYSTEM (Ab isme Email, Mobile aur DOB bhi save hoga)
 DB_FILE = "users.json"
 
 def load_db():
     if os.path.exists(DB_FILE):
         with open(DB_FILE, "r") as f:
             return json.load(f)
-    # Agar file nahi hai, toh Admin (Krishnkant) ka account bana do
-    default_db = {"krishnkant": {"password": "admin", "role": "admin", "status": "active"}}
+    # Admin ka default data (taaki error na aaye)
+    default_db = {
+        "krishnkant": {
+            "password": "admin", 
+            "pin": "0000", 
+            "email": "admin@smart.com", 
+            "mobile": "0000000000", 
+            "dob": "01/01/2000",
+            "role": "admin", 
+            "status": "active"
+        }
+    }
     save_db(default_db)
     return default_db
 
@@ -30,7 +40,24 @@ def save_db(db):
     with open(DB_FILE, "w") as f:
         json.dump(db, f)
 
-# 🧠 MULTI-USER MEMORY ENGINE (Sabki baatein alag-alag yaad rakhega)
+# 📋 Sabhi users ki list (KYC Details ke sath)
+def get_all_users():
+    db = load_db()
+    user_list = "### 📋 Registered Users KYC List:\n\n"
+    for u, details in db.items():
+        status_emoji = "🟢" if details.get('status', 'active') == "active" else "🔴"
+        role_emoji = "👑" if details.get('role', 'user') == "admin" else "👤"
+        
+        email = details.get('email', 'N/A')
+        mobile = details.get('mobile', 'N/A')
+        dob = details.get('dob', 'N/A')
+        
+        user_list += f"{status_emoji} **{u}** | Role: {role_emoji} {details.get('role', 'user').upper()} | Status: {details.get('status', 'active').upper()}\n"
+        user_list += f"📧 **Email:** {email} | 📱 **Mobile:** {mobile} | 🎂 **DOB:** {dob}\n"
+        user_list += "---\n" # Line separator for neat look
+    return user_list
+
+# 🧠 MULTI-USER MEMORY ENGINE
 user_chat_sessions = {}
 
 def get_user_session(username):
@@ -51,15 +78,12 @@ def get_news():
         return "\n".join([f"- {a['title']}" for a in res['articles'][:3]])
     except: return "News unavailable"
 
-# --- MAIN BRAIN (Ab isme username bhi pass hoga) ---
+# --- MAIN BRAIN ---
 def smart1_0_ultimate(audio_file, text_input, image_input, current_user):
-    # Agar koi bina login kiye yahan tak aa gaya
     if not current_user:
         return text_input, "Security Alert: Kripya pehle login karein!", None, None
 
-    # User ka personal dimaag nikalo
     chat_session = get_user_session(current_user)
-
     user_text = ""
     ai_photo = None
     
@@ -118,58 +142,77 @@ def smart1_0_ultimate(audio_file, text_input, image_input, current_user):
     
     return user_text, ai_text, "voice.mp3", ai_photo
 
-# --- 🔒 AUTHENTICATION & ADMIN LOGIC ---
-def login_logic(username, password):
+# --- 🔒 AUTHENTICATION & ADMIN LOGIC (WITH 2FA PIN) ---
+def login_logic(username, password, pin):
     db = load_db()
     if username in db:
-        if db[username]["password"] == password:
+        if db[username]["password"] == password and db[username].get("pin", "0000") == pin:
             if db[username]["status"] == "banned":
-                return gr.update(value="❌ Admin ne aapka account Terminate kar diya hai!"), gr.update(visible=True), gr.update(visible=False), gr.update(visible=False), None
-            # Login Success!
+                return gr.update(value="❌ Admin ne aapka account Terminate kar diya hai!"), gr.update(visible=True), gr.update(visible=False), gr.update(visible=False), None, get_all_users()
+            
             if db[username]["role"] == "admin":
-                # Admin ko Admin Panel dikhao
-                return gr.update(value=f"✅ Welcome Boss {username}!"), gr.update(visible=False), gr.update(visible=True), gr.update(visible=True), username
+                return gr.update(value=f"✅ Welcome Boss {username}! Security Cleared."), gr.update(visible=False), gr.update(visible=True), gr.update(visible=True), username, get_all_users()
             else:
-                # Normal user ko sirf app dikhao
-                return gr.update(value=f"✅ Welcome {username}!"), gr.update(visible=False), gr.update(visible=True), gr.update(visible=False), username
-    return gr.update(value="❌ Galat Username ya Password!"), gr.update(visible=True), gr.update(visible=False), gr.update(visible=False), None
+                return gr.update(value=f"✅ Welcome {username}! Security Cleared."), gr.update(visible=False), gr.update(visible=True), gr.update(visible=False), username, get_all_users()
+    return gr.update(value="❌ Galat Username, Password ya PIN! Access Denied."), gr.update(visible=True), gr.update(visible=False), gr.update(visible=False), None, get_all_users()
 
-def register_logic(username, password):
+def register_logic(username, email, mobile, dob, password, pin):
     db = load_db()
-    if username == "" or password == "":
-        return "❌ Khali naam ya password nahi chalega!"
+    # Compulsory Fields Check
+    if not all([username, email, mobile, dob, password, pin]):
+        return "❌ Sabhi fields (Naam, Email, Mobile, DOB, Password, PIN) bharna COMPULSORY hai!"
+    
+    if len(pin) < 4:
+        return "❌ Security PIN kam se kam 4 digits ka hona chahiye!"
     if username in db:
         return "❌ Yeh username pehle se kisi ne le liya hai!"
     
     # Naya user save karo
-    db[username] = {"password": password, "role": "user", "status": "active"}
+    db[username] = {
+        "password": password, 
+        "pin": pin, 
+        "email": email,
+        "mobile": mobile,
+        "dob": dob,
+        "role": "user", 
+        "status": "active"
+    }
     save_db(db)
-    return f"✅ Account Ban Gaya! Ab upar se Login karo."
+    return f"✅ Account Ban Gaya! Ab Login tab par ja kar login karein."
 
 def ban_user(target_user):
     db = load_db()
     if target_user not in db:
-        return "❌ Yeh user system mein nahi hai."
+        return "❌ Yeh user system mein nahi hai.", get_all_users()
     if db[target_user]["role"] == "admin":
-        return "❌ Boss ko ban nahi kar sakte!"
+        return "❌ Boss ko ban nahi kar sakte!", get_all_users()
     
     db[target_user]["status"] = "banned"
     save_db(db)
-    return f"🚫 User '{target_user}' ko hamesha ke liye Terminate kar diya gaya hai!"
+    return f"🚫 User '{target_user}' ko hamesha ke liye Terminate kar diya gaya hai!", get_all_users()
+
+def restore_user(target_user):
+    db = load_db()
+    if target_user not in db:
+        return "❌ Yeh user system mein nahi hai.", get_all_users()
+    if db[target_user]["status"] == "active":
+        return "⚠️ Yeh user pehle se hi Active hai.", get_all_users()
+    
+    db[target_user]["status"] = "active"
+    save_db(db)
+    return f"✅ User '{target_user}' ko wapas Restore kar diya gaya hai!", get_all_users()
 
 def logout_logic():
     return gr.update(visible=True), gr.update(visible=False), gr.update(visible=False), None
 
-# --- 🎨 NAYA FUTURISTIC UI DESIGN (With Auth Screens) ---
+# --- 🎨 NAYA FUTURISTIC UI DESIGN ---
 custom_theme = gr.themes.Soft(primary_hue="cyan", secondary_hue="blue", neutral_hue="slate", font=[gr.themes.GoogleFont('Orbitron'), 'ui-sans-serif', 'system-ui', 'sans-serif'])
 
 with gr.Blocks(title="Smart1/0 Ultimate", theme=custom_theme) as demo:
-    
-    # Yeh variable yaad rakhega ki kaunsa user chal raha hai
     current_user_state = gr.State(None)
 
     gr.Markdown("<h1 style='text-align: center; color: #00d2ff;'>🤖 Project Smart1/0</h1>")
-    gr.Markdown("<p style='text-align: center;'><b>Created by Krishnkant</b> | Professional Multi-User System 🛡️</p>")
+    gr.Markdown("<p style='text-align: center;'><b>Created by Krishnkant</b> | Protected by KYC & 2FA Security 🛡️</p>")
     
     # ---------------- 1. LOGIN & SIGNUP SCREEN ----------------
     with gr.Group(visible=True) as auth_screen:
@@ -180,17 +223,23 @@ with gr.Blocks(title="Smart1/0 Ultimate", theme=custom_theme) as demo:
                 with gr.Tab("Login"):
                     log_user = gr.Textbox(label="Username")
                     log_pass = gr.Textbox(label="Password", type="password")
+                    log_pin = gr.Textbox(label="4-Digit Security PIN (2FA)", type="password", placeholder="****")
                     login_btn = gr.Button("Login 🚀", variant="primary")
                 
-                with gr.Tab("Naya Account Banao"):
-                    reg_user = gr.Textbox(label="Naya Username")
-                    reg_pass = gr.Textbox(label="Naya Password", type="password")
+                with gr.Tab("Naya Account Banao (KYC Compulsory)"):
+                    reg_user = gr.Textbox(label="1. Naya Username")
+                    reg_email = gr.Textbox(label="2. Gmail Address", placeholder="example@gmail.com")
+                    reg_mobile = gr.Textbox(label="3. Mobile Number", placeholder="10-digit number")
+                    reg_dob = gr.Textbox(label="4. Date of Birth", placeholder="DD/MM/YYYY")
+                    reg_pass = gr.Textbox(label="5. Set Password", type="password")
+                    reg_pin = gr.Textbox(label="6. Set 4-Digit Security PIN", type="password", placeholder="****")
+                    
                     reg_btn = gr.Button("Sign Up 📝")
                     reg_msg = gr.Markdown("")
 
     # ---------------- 2. MAIN AI APP SCREEN ----------------
     with gr.Group(visible=False) as app_screen:
-        gr.Markdown(f"### 🟢 System Online")
+        gr.Markdown(f"### 🟢 System Online - Fully Secured")
         with gr.Row():
             with gr.Column(scale=1, variant="panel"):
                 gr.Markdown("### 📥 Command Center")
@@ -208,45 +257,46 @@ with gr.Blocks(title="Smart1/0 Ultimate", theme=custom_theme) as demo:
         
         logout_btn = gr.Button("🚪 Logout", variant="stop")
 
-    # ---------------- 3. ADMIN PANEL SCREEN (Only for Krishnkant) ----------------
+    # ---------------- 3. ADMIN PANEL SCREEN ----------------
     with gr.Group(visible=False) as admin_screen:
         gr.Markdown("---")
         with gr.Row():
             with gr.Column(variant="panel"):
-                gr.Markdown("<h3 style='color: red;'>⚠️ BOSS CONTROL ROOM (Terminate Users)</h3>")
-                target_user = gr.Textbox(label="Kisko Ban karna hai? (Username type karein)")
-                ban_btn = gr.Button("🚫 TERMINATE USER", variant="stop")
-                ban_msg = gr.Textbox(label="Status")
+                gr.Markdown("<h3 style='color: red;'>⚠️ BOSS CONTROL ROOM</h3>")
+                
+                # KYC wali list yahan dikhegi
+                user_list_display = gr.Markdown("Loading...")
+                refresh_btn = gr.Button("🔄 Refresh List", size="sm")
+                
+                gr.Markdown("---")
+                target_user = gr.Textbox(label="Action ke liye Username type karein:")
+                with gr.Row():
+                    ban_btn = gr.Button("🚫 TERMINATE USER", variant="stop")
+                    restore_btn = gr.Button("♻️ RESTORE USER", variant="primary")
+                admin_msg = gr.Textbox(label="Action Status")
 
     # --- BUTTON CONNECTIONS ---
     
-    # Registration
-    reg_btn.click(register_logic, [reg_user, reg_pass], reg_msg)
+    # Register mein ab 6 inputs jayenge
+    reg_btn.click(
+        register_logic, 
+        [reg_user, reg_email, reg_mobile, reg_dob, reg_pass, reg_pin], 
+        reg_msg
+    )
     
-    # Login (Updates visibility of screens)
     login_btn.click(
         login_logic, 
-        [log_user, log_pass], 
-        [auth_msg, auth_screen, app_screen, admin_screen, current_user_state]
+        [log_user, log_pass, log_pin], 
+        [auth_msg, auth_screen, app_screen, admin_screen, current_user_state, user_list_display]
     )
     
-    # Logout
-    logout_btn.click(
-        logout_logic,
-        inputs=[],
-        outputs=[auth_screen, app_screen, admin_screen, current_user_state]
-    )
-
-    # Main AI Trigger (Ab current_user_state bhi jayega dimaag mein)
-    btn.click(
-        smart1_0_ultimate, 
-        [in_audio, in_text, in_img, current_user_state], 
-        [out_input, out_text, out_audio, out_image]
-    )
+    logout_btn.click(logout_logic, inputs=[], outputs=[auth_screen, app_screen, admin_screen, current_user_state])
+    btn.click(smart1_0_ultimate, [in_audio, in_text, in_img, current_user_state], [out_input, out_text, out_audio, out_image])
     
-    # Admin Ban Button
-    ban_btn.click(ban_user, [target_user], ban_msg)
+    # Admin Buttons
+    refresh_btn.click(get_all_users, inputs=[], outputs=[user_list_display])
+    ban_btn.click(ban_user, [target_user], [admin_msg, user_list_display])
+    restore_btn.click(restore_user, [target_user], [admin_msg, user_list_display])
 
 if __name__ == "__main__":
-    # Ab Gradio ka default auth hata diya hai kyunki humne khudka professional auth banaya hai!
     demo.launch(server_name="0.0.0.0", server_port=7860)
