@@ -2,7 +2,7 @@ import os
 import json
 import gradio as gr
 import speech_recognition as sr
-import google.generativeai as genai # Wapas purani library jise Render janta hai
+import google.generativeai as genai 
 from gtts import gTTS
 import requests
 import urllib.parse
@@ -15,8 +15,8 @@ GOOGLE_API_KEY = os.environ.get("GOOGLE_API_KEY")
 if GOOGLE_API_KEY:
     genai.configure(api_key=GOOGLE_API_KEY)
 
-# HACK: Gemini ka stable model use kar rahe hain
-model = genai.GenerativeModel('gemini-1.5-flash')
+# 🛠️ ERROR FIX: Model ka naam wapas sabse stable version par set kar diya hai
+model = genai.GenerativeModel('gemini-1.5-flash-latest')
 
 # 🗄️ DATABASE SYSTEM
 DB_FILE = "users.json"
@@ -64,7 +64,6 @@ user_chat_sessions = {}
 
 def get_user_session(username):
     if username not in user_chat_sessions:
-        # Fallback to older stable syntax for chat session
         user_chat_sessions[username] = model.start_chat(history=[])
     return user_chat_sessions[username]
 
