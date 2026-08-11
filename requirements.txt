@@ -1,6 +1,6 @@
 gradio
-google.generativeai
-gTTS
+google-genai
+gtts
 SpeechRecognition
 Pillow
 requests
