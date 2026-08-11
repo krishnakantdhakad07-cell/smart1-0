@@ -2,7 +2,7 @@ import os
 import json
 import gradio as gr
 import speech_recognition as sr
-from google import genai  # 🚀 DEKHO YAHAN EK DAM NAYI LIBRARY HAI
+from google import genai  # 🚀 NAYI LIBRARY
 from gtts import gTTS
 import requests
 import urllib.parse
@@ -10,10 +10,32 @@ import io
 from PIL import Image
 import re 
 
-# 1. NAYA API Key Setup (New SDK Syntax)
+# 1. NAYA API Key Setup & SMART RADAR 📡
 GOOGLE_API_KEY = os.environ.get("GOOGLE_API_KEY")
+active_model = "gemini-2.0-flash" # Default latest model
+
 if GOOGLE_API_KEY:
     client = genai.Client(api_key=GOOGLE_API_KEY)
+    
+    # 📡 RADAR: Google se live models ki list maango
+    try:
+        models = client.models.list()
+        valid_models = [m.name for m in models]
+        
+        # Sabse pehle Gemini 2.0 dhoondho
+        for m in valid_models:
+            if '2.0-flash' in m:
+                active_model = m
+                break
+        else:
+            # Agar 2.0 block ho, toh koi bhi zinda model utha lo
+            for m in valid_models:
+                if 'flash' in m or 'pro' in m:
+                    active_model = m
+                    break
+        print(f"✅ Auto-Detected Live Model: {active_model}")
+    except Exception as e:
+        print(f"⚠️ Model Detection Error: {e}")
 else:
     client = None
 
@@ -58,13 +80,13 @@ def get_all_users():
         user_list += "---\n" 
     return user_list
 
-# 🧠 MULTI-USER MEMORY ENGINE (NEW SDK)
+# 🧠 MULTI-USER MEMORY ENGINE
 user_chat_sessions = {}
 
 def get_user_session(username):
     if username not in user_chat_sessions:
-        # Nayi library mein chat session banane ka sahi tareeka
-        user_chat_sessions[username] = client.chats.create(model="gemini-1.5-flash")
+        # Ab humara detected zinda model yahan use hoga!
+        user_chat_sessions[username] = client.chats.create(model=active_model)
     return user_chat_sessions[username]
 
 # --- SARE HELPER FUNCTIONS ---
@@ -131,15 +153,14 @@ def smart1_0_ultimate(audio_file, text_input, image_input, current_user):
     Answer in simple, friendly Hinglish. Do not use markdown symbols or LaTeX."""
 
     try:
-        # Nayi library mein message bhej kar jawab lena
         if image_input is not None:
             response = chat_session.send_message([prompt, image_input])
         else:
             response = chat_session.send_message(prompt)
         ai_text = response.text
     except Exception as e:
-        # Pura memory wipe karke actual error dikhao
-        user_chat_sessions[current_user] = client.chats.create(model="gemini-1.5-flash")
+        # Agar block ho toh zinda model se dimaag refresh karo
+        user_chat_sessions[current_user] = client.chats.create(model=active_model)
         ai_text = f"⚠️ System Error Details: {str(e)}"
 
     tts = gTTS(ai_text, lang='hi')
