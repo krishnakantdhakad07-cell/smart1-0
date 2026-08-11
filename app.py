@@ -5,8 +5,8 @@ import google.generativeai as genai
 from gtts import gTTS
 import requests
 import urllib.parse
-# Nayi library photo download karne ke liye
-import shutil
+import io
+from PIL import Image
 
 # 1. API Key Setup
 GOOGLE_API_KEY = os.environ.get("GOOGLE_API_KEY")
@@ -32,8 +32,7 @@ def get_news():
 # --- MAIN BRAIN ---
 def smart1_0_ultimate(audio_file, text_input, image_input):
     user_text = ""
-    # Notice: Ab hum generated_image.jpg naam ki file Render server par banayenge
-    ai_photo_path = None
+    ai_photo = None
     
     if text_input and text_input.strip() != "":
         user_text = text_input
@@ -56,35 +55,24 @@ def smart1_0_ultimate(audio_file, text_input, image_input):
     if "news" in user_lower or "khabar" in user_lower:
         context += f"\n[LIVE NEWS: {get_news()}]"
 
-    # 🎨 NAYA PHOTO GENERATION LOGIC (Downloading Jaadu ✨)
+    # 🎨 NAYA DIRECT RAM LOGIC (Bina save kiye photo dikhana)
     image_keywords = ["banao", "draw", "photo", "image", "generate", "picture"]
     if any(word in user_lower for word in image_keywords):
         try:
-            # 1. Prompt ko saaf karo
             clean_prompt = urllib.parse.quote(user_text)
             img_url = f"https://image.pollinations.ai/prompt/{clean_prompt}?width=1024&height=1024&nologo=true&seed=42"
             
-            # 2. Photo ko internet se download karo
-            print(f"📡 Generating image from: {img_url}")
-            response = requests.get(img_url, stream=True)
-            
+            response = requests.get(img_url)
             if response.status_code == 200:
-                # 3. Photo ko Render server par 'generated_image.jpg' naam se save karo
-                ai_photo_path = "generated_image.jpg"
-                with open(ai_photo_path, 'wb') as f:
-                    response.raw.decode_content = True
-                    shutil.copyfileobj(response.raw, f)
-                print("✅ Image saved to server successfully!")
+                # MAGIC FIX: Photo ko memory (BytesIO) mein open karke PIL Image bana lo
+                ai_photo = Image.open(io.BytesIO(response.content))
                 context += "\n[SYSTEM: Photo successfully generate ho gayi hai aur niche box mein dikh rahi hai.]"
             else:
                 context += "\n[SYSTEM: Photo API down hai.]"
-                ai_photo_path = None
         except Exception as e:
-            print(f"❌ Error generating image: {e}")
-            context += f"\n[SYSTEM: Photo generation mein error aayi: {e}]"
-            ai_photo_path = None
+            context += f"\n[SYSTEM: Photo generation fail ho gayi.]"
 
-    # 🧠 STRICT CREATOR IDENTITY PROMPT
+    # 🧠 STRICT CREATOR IDENTITY PROMPT 
     prompt = f"""[CRITICAL SYSTEM IDENTITY: Tumhara naam 'Smart1/0' hai. Tumhe 'Krishnkant' ne banaya hai. Agar user pooche ki tumhe kisne banaya, tumhara creator kaun hai, ya tumhara boss kaun hai, toh tumhara STRICT jawab hona chahiye ki tumhe Krishnkant ne banaya hai. Kisi bhi haal mein Google ya Gemini ka naam mat lena.]
     [SYSTEM CONTEXT: {context} 
     Rule: Be friendly. Speak in simple Hinglish. DO NOT use markdown/complex math symbols. Write plain text for text-to-speech.]
@@ -103,8 +91,8 @@ def smart1_0_ultimate(audio_file, text_input, image_input):
     tts = gTTS(ai_text, lang='hi')
     tts.save("voice.mp3")
     
-    # Ab hum file path bhej rahe hain (generated_image.jpg), link nahi
-    return user_text, ai_text, "voice.mp3", ai_photo_path
+    # Ab hum direct image object bhej rahe hain, file path nahi
+    return user_text, ai_text, "voice.mp3", ai_photo
 
 # --- 🎨 NAYA FUTURISTIC UI DESIGN ---
 custom_theme = gr.themes.Soft(
@@ -119,7 +107,6 @@ with gr.Blocks(title="Smart1/0 Ultimate", theme=custom_theme) as demo:
     gr.Markdown("<p style='text-align: center;'><b>Created by Krishnkant</b> | Ultimate Super-AI with Memory & Advanced UI 🧠✨</p>")
     
     with gr.Row():
-        # Left Side: Tumhara Input
         with gr.Column(scale=1, variant="panel"):
             gr.Markdown("### 📥 Command Center")
             in_audio = gr.Audio(sources=["microphone"], type="filepath", label="🎙️ Boliye")
@@ -127,16 +114,14 @@ with gr.Blocks(title="Smart1/0 Ultimate", theme=custom_theme) as demo:
             in_img = gr.Image(sources=["webcam", "upload"], type="pil", label="👁️ E.D.I.T.H. (Vision)")
             btn = gr.Button("🚀 SYSTEM START", variant="primary")
             
-        # Right Side: AI ka Output
         with gr.Column(scale=1, variant="panel"):
             gr.Markdown("### 📤 Smart1/0 Output")
             out_input = gr.Textbox(label="Aapki Command:")
             out_text = gr.Textbox(label="📝 Jawab:", lines=4)
             out_audio = gr.Audio(label="🔊 Suniye:", autoplay=True)
-            # gr.Image output component handle kar lega local file path ko
-            out_image = gr.Image(label="🎨 Art Gallery (Generated Images)", type="filepath")
+            # Type ko wapas 'pil' kar diya hai taaki direct image accept kare
+            out_image = gr.Image(label="🎨 Art Gallery (Generated Images)", type="pil")
 
-    # Button ko function se jodna
     btn.click(smart1_0_ultimate, [in_audio, in_text, in_img], [out_input, out_text, out_audio, out_image])
 
 if __name__ == "__main__":
