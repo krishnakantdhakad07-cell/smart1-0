@@ -15,8 +15,8 @@ GOOGLE_API_KEY = os.environ.get("GOOGLE_API_KEY")
 if GOOGLE_API_KEY:
     genai.configure(api_key=GOOGLE_API_KEY)
 
-# 🛠️ ERROR FIX: Model ka naam wapas sabse stable version par set kar diya hai
-model = genai.GenerativeModel('gemini-1.5-flash-latest')
+# 🛠️ ULTIMATE FIX: Purani library ke liye sabse stable aur classic model
+model = genai.GenerativeModel('gemini-pro')
 
 # 🗄️ DATABASE SYSTEM
 DB_FILE = "users.json"
