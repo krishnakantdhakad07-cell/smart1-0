@@ -164,11 +164,9 @@ def register_logic(username, email, mobile, dob_day, dob_month, dob_year, passwo
     if not all([username, email, mobile, password, pin]):
         return "❌ Error: Sabhi fields bharna COMPULSORY hai!"
     
-    # ⚠️ STRICT EMAIL VALIDATION (Sirf @gmail.com)
     if not email.endswith("@gmail.com"):
         return "❌ Error: Invalid Email! Sirf @gmail.com accounts allowed hain."
         
-    # ⚠️ STRICT MOBILE VALIDATION (Sirf 10 numbers)
     if not (mobile.isdigit() and len(mobile) == 10):
         return "❌ Error: Invalid Mobile! Mobile mein sirf 10 numbers hone chahiye (koi ABCD nahi)."
         
@@ -212,18 +210,18 @@ def logout_logic():
     return gr.update(visible=True), gr.update(visible=False), gr.update(visible=False), None
 
 # --- 🎨 CLEAN & PROFESSIONAL UI DESIGN ---
-# Font ekdum simple, clean aur smooth kar diya hai (Apple/Google style)
+# 🛠️ ERROR FIX: Font ko properly GoogleFont function se wrap kar diya hai
 custom_theme = gr.themes.Soft(
     primary_hue="blue", 
     secondary_hue="slate", 
     neutral_hue="slate", 
-    font=['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif']
+    font=[gr.themes.GoogleFont('Inter'), 'ui-sans-serif', 'system-ui', 'sans-serif']
 )
 
-with gr.Blocks(title="SMART 1/0", theme=custom_theme) as demo:
+# 🛠️ WARNING FIX: Yahan se theme nikaal kar aakhir mein launch() mein daal di hai
+with gr.Blocks(title="SMART 1/0") as demo:
     current_user_state = gr.State(None)
 
-    # ⚠️ CLEAN BLACK BOLD HEADING WITH FIRE ICON
     gr.Markdown("<h1 style='text-align: center; color: black; font-weight: bold;'>🔥 [SMART 1/0]</h1>")
     gr.Markdown("<p style='text-align: center; color: #555;'><b>Created by Krishnkant</b> | Protected by Strict KYC & 2FA Security 🛡️</p>")
     
@@ -309,4 +307,5 @@ with gr.Blocks(title="SMART 1/0", theme=custom_theme) as demo:
     restore_btn.click(restore_user, [target_user], [admin_msg, user_list_display])
 
 if __name__ == "__main__":
-    demo.launch(server_name="0.0.0.0", server_port=7860)
+    # 🛠️ WARNING FIX: Theme ab launch() method ke andar hai
+    demo.launch(server_name="0.0.0.0", server_port=7860, theme=custom_theme)
