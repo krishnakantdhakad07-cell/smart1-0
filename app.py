@@ -110,7 +110,9 @@ def smart1_0_ultimate(audio_file, text_input, image_input, current_user):
     image_keywords = ["banao", "draw", "photo", "image", "generate", "picture"]
     if any(word in user_lower for word in image_keywords):
         try:
-            clean_prompt = urllib.parse.quote(user_text)
+            # 🛡️ STRICT IMAGE SAFETY FILTER ADDED HERE
+            safe_prompt_text = user_text + ", strictly family friendly, safe for work, decent, high quality, fully clothed"
+            clean_prompt = urllib.parse.quote(safe_prompt_text)
             img_url = f"https://image.pollinations.ai/prompt/{clean_prompt}?width=1024&height=1024&nologo=true&seed=42"
             response = requests.get(img_url)
             if response.status_code == 200:
@@ -131,8 +133,10 @@ def smart1_0_ultimate(audio_file, text_input, image_input, current_user):
         else:
             response = chat_session.send_message(prompt)
         ai_text = response.text
-    except:
-        ai_text = "Mujhe samajh nahi aaya, kripya dobara bataiye."
+    except Exception as e:
+        # ♻️ AUTO-RESET HACK: Agar safety filter trigger ho ya memory full ho jaye
+        user_chat_sessions[current_user] = model.start_chat(history=[])
+        ai_text = "⚠️ System Overload ya Safety Block! Maine apna dimaag refresh kar liya hai. Kripya apna naya sawal poochiye!"
 
     tts = gTTS(ai_text, lang='hi')
     tts.save("voice.mp3")
@@ -217,12 +221,10 @@ custom_theme = gr.themes.Soft(
     font=[gr.themes.GoogleFont('Inter'), 'ui-sans-serif', 'system-ui', 'sans-serif']
 )
 
-# 🛡️ CSS to hide footers
 hide_footer_css = """
 footer {visibility: hidden !important; display: none !important;}
 """
 
-# 🛠️ ERROR FIX: Yahan se 'css' keyword hata diya gaya hai
 with gr.Blocks(title="SMART 1/0") as demo:
     current_user_state = gr.State(None)
 
@@ -311,5 +313,4 @@ with gr.Blocks(title="SMART 1/0") as demo:
     restore_btn.click(restore_user, [target_user], [admin_msg, user_list_display])
 
 if __name__ == "__main__":
-    # 🛠️ ERROR FIX: theme aur css dono ko yahan proper tareeqe se lagaya gaya hai, aur faaltu keywords hata diye hain
     demo.launch(server_name="0.0.0.0", server_port=7860, theme=custom_theme, css=hide_footer_css)
