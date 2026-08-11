@@ -10,25 +10,33 @@ import io
 from PIL import Image
 import re 
 
-# 1. API Key Setup & AUTO-MODEL DETECTOR 📡
+# 1. API Key Setup & SMART AUTO-MODEL DETECTOR 📡
 GOOGLE_API_KEY = os.environ.get("GOOGLE_API_KEY")
-active_model_name = 'gemini-1.5-flash' # Default fallback
+active_model_name = 'models/gemini-1.5-pro' # Absolute Stable Fallback
 
 if GOOGLE_API_KEY:
     genai.configure(api_key=GOOGLE_API_KEY)
     try:
-        # Google ke server se live models ki list maango
+        valid_models = []
         for m in genai.list_models():
             if 'generateContent' in m.supported_generation_methods:
-                active_model_name = m.name
-                # Agar fast 'flash' model mil jaye toh usko priority do
-                if 'flash' in active_model_name.lower():
-                    break
-        print(f"✅ Auto-Detected Live Model: {active_model_name}")
+                valid_models.append(m.name)
+        
+        # ⚠️ VIP FILTER: 2.5-flash aur blocked models ko ignore karo
+        safe_models = [m for m in valid_models if '2.5-flash' not in m]
+        
+        if safe_models:
+            # Flash ki jagah ab humesha 'pro' model ko priority do (yeh hamesha chalta hai)
+            pro_models = [m for m in safe_models if 'pro' in m]
+            if pro_models:
+                active_model_name = pro_models[0]
+            else:
+                active_model_name = safe_models[0]
+        print(f"✅ Safe Auto-Detected Live Model: {active_model_name}")
     except Exception as e:
         print(f"⚠️ Model Detection Error: {e}")
 
-# 🛠️ System ab automatic detected model use karega!
+# 🛠️ System ab filter kiya hua Safe model use karega!
 model = genai.GenerativeModel(active_model_name)
 
 # 🗄️ DATABASE SYSTEM
