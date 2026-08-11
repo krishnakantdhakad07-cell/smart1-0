@@ -210,7 +210,6 @@ def logout_logic():
     return gr.update(visible=True), gr.update(visible=False), gr.update(visible=False), None
 
 # --- 🎨 CLEAN & PROFESSIONAL UI DESIGN ---
-# 🛠️ ERROR FIX: Font ko properly GoogleFont function se wrap kar diya hai
 custom_theme = gr.themes.Soft(
     primary_hue="blue", 
     secondary_hue="slate", 
@@ -218,8 +217,13 @@ custom_theme = gr.themes.Soft(
     font=[gr.themes.GoogleFont('Inter'), 'ui-sans-serif', 'system-ui', 'sans-serif']
 )
 
-# 🛠️ WARNING FIX: Yahan se theme nikaal kar aakhir mein launch() mein daal di hai
-with gr.Blocks(title="SMART 1/0") as demo:
+# 🛡️ NAYA: Yeh CSS code neeche aane wale saare default footers aur icons ko block kar dega
+hide_footer_css = """
+footer {visibility: hidden !important; display: none !important;}
+"""
+
+# 🛠️ CSS ko gr.Blocks mein add kar diya gaya hai
+with gr.Blocks(title="SMART 1/0", css=hide_footer_css) as demo:
     current_user_state = gr.State(None)
 
     gr.Markdown("<h1 style='text-align: center; color: black; font-weight: bold;'>🔥 [SMART 1/0]</h1>")
@@ -307,5 +311,5 @@ with gr.Blocks(title="SMART 1/0") as demo:
     restore_btn.click(restore_user, [target_user], [admin_msg, user_list_display])
 
 if __name__ == "__main__":
-    # 🛠️ WARNING FIX: Theme ab launch() method ke andar hai
-    demo.launch(server_name="0.0.0.0", server_port=7860, theme=custom_theme)
+    # 🛠️ NAYA: show_api=False kar diya gaya hai taaki 'Use via API' ka option hamesha ke liye gayab ho jaye
+    demo.launch(server_name="0.0.0.0", server_port=7860, theme=custom_theme, show_api=False)
