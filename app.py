@@ -2,7 +2,7 @@ import os
 import json
 import gradio as gr
 import speech_recognition as sr
-from google import genai  # 🚀 NAYI LIBRARY
+import google.generativeai as genai  # 👈 Wapas tumhari original library
 from gtts import gTTS
 import requests
 import urllib.parse
@@ -13,12 +13,10 @@ import re
 # 1. API Key Setup
 GOOGLE_API_KEY = os.environ.get("GOOGLE_API_KEY")
 if GOOGLE_API_KEY:
-    client = genai.Client(api_key=GOOGLE_API_KEY)
-else:
-    client = None
+    genai.configure(api_key=GOOGLE_API_KEY)
 
-# 🛠️ FIXED STABLE MODEL: Koi radar nahi, seedha sabse bharosemand model
-ACTIVE_MODEL = "gemini-1.5-flash"
+# 🛠️ THE GOLDEN FIX: Wapas tumhara original chalta hua model!
+model = genai.GenerativeModel('gemini-flash-latest')
 
 # 🗄️ DATABASE SYSTEM
 DB_FILE = "users.json"
@@ -66,8 +64,7 @@ user_chat_sessions = {}
 
 def get_user_session(username):
     if username not in user_chat_sessions:
-        # Fixed Model yahan use ho raha hai
-        user_chat_sessions[username] = client.chats.create(model=ACTIVE_MODEL)
+        user_chat_sessions[username] = model.start_chat(history=[])
     return user_chat_sessions[username]
 
 # --- SARE HELPER FUNCTIONS ---
@@ -88,7 +85,7 @@ def smart1_0_ultimate(audio_file, text_input, image_input, current_user):
     if not current_user:
         return text_input, "Security Alert: Kripya pehle login karein!", None, None
 
-    if not client:
+    if not GOOGLE_API_KEY:
         return text_input, "❌ API Key Error: Render Environment Variables mein GOOGLE_API_KEY missing hai!", None, None
 
     chat_session = get_user_session(current_user)
@@ -138,10 +135,16 @@ def smart1_0_ultimate(audio_file, text_input, image_input, current_user):
             response = chat_session.send_message([prompt, image_input])
         else:
             response = chat_session.send_message(prompt)
-        ai_text = response.text
+        
+        # 🛡️ SAFETY PROTOCOL HACK (Crash hone se bachane ke liye)
+        try:
+            ai_text = response.text
+        except ValueError:
+            ai_text = "⚠️ S.H.I.E.L.D. Safety Protocol Active: Maaf karna, main is tarah ke topics par baat nahi kar sakta."
+
     except Exception as e:
-        # Agar koi bhi chhoti-moti error aaye toh reset karke asli wajah dikhao
-        user_chat_sessions[current_user] = client.chats.create(model=ACTIVE_MODEL)
+        # Pura memory wipe karke actual error dikhao
+        user_chat_sessions[current_user] = model.start_chat(history=[])
         ai_text = f"⚠️ System Error Details: {str(e)}"
 
     tts = gTTS(ai_text, lang='hi')
