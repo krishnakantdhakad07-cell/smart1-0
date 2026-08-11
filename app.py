@@ -10,13 +10,26 @@ import io
 from PIL import Image
 import re 
 
-# 1. API Key Setup
+# 1. API Key Setup & AUTO-MODEL DETECTOR 📡
 GOOGLE_API_KEY = os.environ.get("GOOGLE_API_KEY")
+active_model_name = 'gemini-1.5-flash' # Default fallback
+
 if GOOGLE_API_KEY:
     genai.configure(api_key=GOOGLE_API_KEY)
+    try:
+        # Google ke server se live models ki list maango
+        for m in genai.list_models():
+            if 'generateContent' in m.supported_generation_methods:
+                active_model_name = m.name
+                # Agar fast 'flash' model mil jaye toh usko priority do
+                if 'flash' in active_model_name.lower():
+                    break
+        print(f"✅ Auto-Detected Live Model: {active_model_name}")
+    except Exception as e:
+        print(f"⚠️ Model Detection Error: {e}")
 
-# 🛠️ ULTIMATE FIX: Purani library ke liye sabse stable aur classic model
-model = genai.GenerativeModel('gemini-pro')
+# 🛠️ System ab automatic detected model use karega!
+model = genai.GenerativeModel(active_model_name)
 
 # 🗄️ DATABASE SYSTEM
 DB_FILE = "users.json"
