@@ -217,13 +217,13 @@ custom_theme = gr.themes.Soft(
     font=[gr.themes.GoogleFont('Inter'), 'ui-sans-serif', 'system-ui', 'sans-serif']
 )
 
-# 🛡️ NAYA: Yeh CSS code neeche aane wale saare default footers aur icons ko block kar dega
+# 🛡️ CSS to hide footers
 hide_footer_css = """
 footer {visibility: hidden !important; display: none !important;}
 """
 
-# 🛠️ CSS ko gr.Blocks mein add kar diya gaya hai
-with gr.Blocks(title="SMART 1/0", css=hide_footer_css) as demo:
+# 🛠️ ERROR FIX: Yahan se 'css' keyword hata diya gaya hai
+with gr.Blocks(title="SMART 1/0") as demo:
     current_user_state = gr.State(None)
 
     gr.Markdown("<h1 style='text-align: center; color: black; font-weight: bold;'>🔥 [SMART 1/0]</h1>")
@@ -311,5 +311,5 @@ with gr.Blocks(title="SMART 1/0", css=hide_footer_css) as demo:
     restore_btn.click(restore_user, [target_user], [admin_msg, user_list_display])
 
 if __name__ == "__main__":
-    # 🛠️ NAYA: show_api=False kar diya gaya hai taaki 'Use via API' ka option hamesha ke liye gayab ho jaye
-    demo.launch(server_name="0.0.0.0", server_port=7860, theme=custom_theme, show_api=False)
+    # 🛠️ ERROR FIX: theme aur css dono ko yahan proper tareeqe se lagaya gaya hai, aur faaltu keywords hata diye hain
+    demo.launch(server_name="0.0.0.0", server_port=7860, theme=custom_theme, css=hide_footer_css)
