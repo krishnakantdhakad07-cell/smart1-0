@@ -2,7 +2,7 @@ import os
 import json
 import gradio as gr
 import speech_recognition as sr
-import google.generativeai as genai
+from google import genai  # 🚀 NAYI LIBRARY IMPORT
 from gtts import gTTS
 import requests
 import urllib.parse
@@ -10,10 +10,12 @@ import io
 from PIL import Image
 import re 
 
-# 1. API Key Setup
+# 1. NAYA API Key Setup
 GOOGLE_API_KEY = os.environ.get("GOOGLE_API_KEY")
-genai.configure(api_key=GOOGLE_API_KEY)
-model = genai.GenerativeModel('gemini-flash-latest')
+if GOOGLE_API_KEY:
+    client = genai.Client(api_key=GOOGLE_API_KEY)
+else:
+    client = None
 
 # 🗄️ DATABASE SYSTEM
 DB_FILE = "users.json"
@@ -56,12 +58,13 @@ def get_all_users():
         user_list += "---\n" 
     return user_list
 
-# 🧠 MULTI-USER MEMORY ENGINE
+# 🧠 MULTI-USER MEMORY ENGINE (NAYA SYNTAX)
 user_chat_sessions = {}
 
 def get_user_session(username):
     if username not in user_chat_sessions:
-        user_chat_sessions[username] = model.start_chat(history=[])
+        # Nayi library mein chat session create karne ka naya tareeqa
+        user_chat_sessions[username] = client.chats.create(model="gemini-1.5-flash")
     return user_chat_sessions[username]
 
 # --- SARE HELPER FUNCTIONS ---
@@ -81,6 +84,9 @@ def get_news():
 def smart1_0_ultimate(audio_file, text_input, image_input, current_user):
     if not current_user:
         return text_input, "Security Alert: Kripya pehle login karein!", None, None
+
+    if not client:
+        return text_input, "❌ API Key Error: Render Environment Variables mein GOOGLE_API_KEY missing hai!", None, None
 
     chat_session = get_user_session(current_user)
     user_text = ""
@@ -110,7 +116,6 @@ def smart1_0_ultimate(audio_file, text_input, image_input, current_user):
     image_keywords = ["banao", "draw", "photo", "image", "generate", "picture"]
     if any(word in user_lower for word in image_keywords):
         try:
-            # 🛡️ STRICT IMAGE SAFETY FILTER ADDED HERE
             safe_prompt_text = user_text + ", strictly family friendly, safe for work, decent, high quality, fully clothed"
             clean_prompt = urllib.parse.quote(safe_prompt_text)
             img_url = f"https://image.pollinations.ai/prompt/{clean_prompt}?width=1024&height=1024&nologo=true&seed=42"
@@ -121,11 +126,9 @@ def smart1_0_ultimate(audio_file, text_input, image_input, current_user):
         except:
             context += f"\n[SYSTEM: Photo generation fail ho gayi.]"
 
-    prompt = f"""[CRITICAL SYSTEM IDENTITY: Tumhara naam 'Smart1/0' hai. Tumhe 'Krishnkant' ne banaya hai. Agar user pooche ki tumhe kisne banaya, toh tumhara STRICT jawab hona chahiye ki tumhe Krishnkant ne banaya hai.]
-    [SYSTEM CONTEXT: User ka naam '{current_user}' hai. Usey uske naam se bula sakte ho. {context} 
-    Rule: Be friendly. Speak in simple Hinglish. DO NOT use markdown.]
-    
-    User Query: {user_text}"""
+    prompt = f"""You are Smart1/0 created by Krishnkant. User is '{current_user}'.
+    {context}
+    Answer in simple, friendly Hinglish. Do not use markdown symbols or LaTeX."""
 
     try:
         if image_input is not None:
@@ -134,9 +137,9 @@ def smart1_0_ultimate(audio_file, text_input, image_input, current_user):
             response = chat_session.send_message(prompt)
         ai_text = response.text
     except Exception as e:
-        # ♻️ AUTO-RESET HACK: Agar safety filter trigger ho ya memory full ho jaye
-        user_chat_sessions[current_user] = model.start_chat(history=[])
-        ai_text = "⚠️ System Overload ya Safety Block! Maine apna dimaag refresh kar liya hai. Kripya apna naya sawal poochiye!"
+        # ⚠️ Asli Error ab screen par aayegi, aur chat reset hogi
+        user_chat_sessions[current_user] = client.chats.create(model="gemini-1.5-flash")
+        ai_text = f"⚠️ System Error Details: {str(e)}"
 
     tts = gTTS(ai_text, lang='hi')
     tts.save("voice.mp3")
